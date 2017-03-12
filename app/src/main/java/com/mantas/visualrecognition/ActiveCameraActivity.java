@@ -46,7 +46,7 @@ public class ActiveCameraActivity extends Activity implements CameraBridgeViewBa
     Mat mRgbaT;
     Mat mIntermediateMat;
     private CameraBridgeViewBase mOpenCvCameraView;
-    boolean scanning = true;
+    boolean scanning = false;
     boolean resourcesLoaded = false;
 
     private CascadeClassifier cascadeClassifier = null;
@@ -125,55 +125,57 @@ public class ActiveCameraActivity extends Activity implements CameraBridgeViewBa
     @Override
     public Mat onCameraFrame(CameraBridgeViewBase.CvCameraViewFrame inputFrame) {
 
-        mRgba = inputFrame.gray();
-        mRgbaF = inputFrame.rgba();
+            mRgba = inputFrame.gray();
+            mRgbaF = inputFrame.rgba();
 
-        MatOfRect objects = new MatOfRect();
+        if (scanning) {
 
-        MatOfRect eyesObjects = new MatOfRect();
+            if (!resourcesLoaded) {
 
-        if (!resourcesLoaded) {
+                InputStream is = getResources().openRawResource(R.raw.haarcascade_frontalface_default);
+                InputStream is2 = getResources().openRawResource(R.raw.frontal_eyes);
 
-            InputStream is = getResources().openRawResource(R.raw.haarcascade_frontalface_default);
-            InputStream is2 = getResources().openRawResource(R.raw.frontal_eyes);
+                File cascadeDir = getDir("cascade", Context.MODE_PRIVATE);
 
-            File cascadeDir = getDir("cascade", Context.MODE_PRIVATE);
+                File mCascadeFile = new File(cascadeDir, "haarcascade_frontalface_default.xml");
+                File eyesCascadeFile = new File(cascadeDir, "frontal_eyes.xml");
 
-            File mCascadeFile = new File(cascadeDir, "haarcascade_frontalface_default.xml");
-            File eyesCascadeFile = new File(cascadeDir, "frontal_eyes.xml");
+                loadResources(is, mCascadeFile);
+                loadResources(is2, eyesCascadeFile);
 
-            loadResources(is, mCascadeFile);
-            loadResources(is2, eyesCascadeFile);
+                cascadeClassifier = new CascadeClassifier(mCascadeFile.getAbsolutePath());
 
-            cascadeClassifier = new CascadeClassifier(mCascadeFile.getAbsolutePath());
+                cascadeClassifier.load(mCascadeFile.getAbsolutePath());
 
-            cascadeClassifier.load(mCascadeFile.getAbsolutePath());
+                eyesClassifier = new CascadeClassifier(eyesCascadeFile.getAbsolutePath());
 
-            eyesClassifier = new CascadeClassifier(eyesCascadeFile.getAbsolutePath());
+                eyesClassifier.load(eyesCascadeFile.getAbsolutePath());
 
-            eyesClassifier.load(eyesCascadeFile.getAbsolutePath());
+                resourcesLoaded = true;
+            }
 
-            resourcesLoaded = true;
-        }
+            if (!cascadeClassifier.empty() && !eyesClassifier.empty()) {
 
-        if (!cascadeClassifier.empty() && !eyesClassifier.empty()) {
+                MatOfRect objects = new MatOfRect();
 
-            cascadeClassifier.detectMultiScale(mRgba, objects, 1.04, 4, 0, new Size(400, 400), new Size(1000, 1000));
+                MatOfRect eyesObjects = new MatOfRect();
 
+                cascadeClassifier.detectMultiScale(mRgba, objects, 1.04, 4, 0, new Size(400, 400), new Size(1000, 1000));
 
-            Rect[] dataArray = objects.toArray();
+                Rect[] dataArray = objects.toArray();
 
+                for (Rect rect : dataArray) {
+                    Imgproc.rectangle(mRgbaF, rect.tl(), rect.br(), new Scalar(0, 255, 0, 255), 3);
 
-            for (Rect rect : dataArray) {
-                Imgproc.rectangle(mRgbaF, rect.tl(), rect.br(), new Scalar(0, 255, 0, 255), 3);
+                    eyesClassifier.detectMultiScale(mRgba, eyesObjects, 1.04, 4, 0, new Size(100, 100), new Size(1000, 1000));
+                    Rect[] eyesDataArray = eyesObjects.toArray();
 
-                eyesClassifier.detectMultiScale(mRgba, eyesObjects, 1.04, 4, 0, new Size(100, 100), new Size(1000, 1000));
-                Rect[] eyesDataArray = eyesObjects.toArray();
+                    for (Rect eye : eyesDataArray) {
+                        Imgproc.rectangle(mRgbaF, eye.tl(), eye.br(), new Scalar(255, 0, 0, 255), 3);
+                        vibrate();
+                    }
 
-                for (Rect eye : eyesDataArray) {
-                    Imgproc.rectangle(mRgbaF, eye.tl(), eye.br(), new Scalar(255, 0, 0, 255), 3);
                 }
-
             }
         }
 
@@ -190,8 +192,6 @@ public class ActiveCameraActivity extends Activity implements CameraBridgeViewBa
             }
             is.close();
             os.close();
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -200,20 +200,6 @@ public class ActiveCameraActivity extends Activity implements CameraBridgeViewBa
     private void vibrate() {
         Vibrator vibrator = (Vibrator) getSystemService(VIBRATOR_SERVICE);
         vibrator.vibrate(200);
-    }
-
-    private void drawRectangle(ArrayList<MatOfPoint> contours) {
-        MatOfPoint2f approxCurve = new MatOfPoint2f();
-
-        for (int i = 0; i < contours.size(); i++) {
-            MatOfPoint2f matOfPoint2f = new MatOfPoint2f(contours.get(i).toArray());
-            double approxDistance = Imgproc.arcLength(matOfPoint2f, true) * 0.02;
-            Imgproc.approxPolyDP(matOfPoint2f, approxCurve, approxDistance, true);
-            MatOfPoint points = new MatOfPoint(approxCurve.toArray());
-            Rect rect = Imgproc.boundingRect(points);
-            Imgproc.rectangle(mRgbaF, new Point(rect.x, rect.y), new Point(rect.x + rect.width, rect.y + rect.height), new Scalar(0, 255, 0, 255), 2);
-
-        }
     }
 
     @Override
@@ -244,7 +230,7 @@ public class ActiveCameraActivity extends Activity implements CameraBridgeViewBa
 
     void doActionBasedOnMatch(ArrayList<String> matches) {
         Actions actions = VoiceRecognition.getAction(matches);
-        switch (actions) {
+        switch (actions != null ? actions : null) {
             case START_SCANNING:
                 turnScanningOn();
                 break;

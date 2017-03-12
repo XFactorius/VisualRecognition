@@ -8,6 +8,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.speech.RecognizerIntent;
+import android.support.annotation.NonNull;
 import android.support.v4.app.FragmentActivity;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -62,7 +63,7 @@ public class MainActivity extends FragmentActivity {
     }
 
     @Override
-    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
             turnActiveCameraActivity();
@@ -74,15 +75,14 @@ public class MainActivity extends FragmentActivity {
         final int action = event.getAction();
 
         if (ActionUtils.containsTouch(action)) {
-            //enableVoiceRecognition();
-            turnActiveCameraActivity();
+            enableVoiceRecognition();
         }
         return super.onTouchEvent(event);
     }
 
      void doActionBasedOnMatch(List<String> matches) {
         Actions actions = VoiceRecognition.getAction(matches);
-        switch (actions) {
+        switch (actions != null ? actions : null) {
             case START_CAMERA:
                 turnActiveCameraActivity();
                 break;

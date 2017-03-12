@@ -167,25 +167,14 @@ public class ActiveCameraActivity extends Activity implements CameraBridgeViewBa
             for (Rect rect : dataArray) {
                 Imgproc.rectangle(mRgbaF, rect.tl(), rect.br(), new Scalar(0, 255, 0, 255), 3);
 
-                eyesClassifier.detectMultiScale(mRgba, eyesObjects, 1.04, 4, 0, new Size(400, 400), new Size(1000, 1000));
+                eyesClassifier.detectMultiScale(mRgba, eyesObjects, 1.04, 4, 0, new Size(100, 100), new Size(1000, 1000));
                 Rect[] eyesDataArray = eyesObjects.toArray();
 
                 for (Rect eye : eyesDataArray) {
-                    Imgproc.rectangle(mRgbaF, eye.tl(), eye.br(), new Scalar(0, 255, 0, 255), 3);
+                    Imgproc.rectangle(mRgbaF, eye.tl(), eye.br(), new Scalar(255, 0, 0, 255), 3);
                 }
 
             }
-
-
-            /*ArrayList<MatOfPoint> contours = new ArrayList<>();
-            Mat hierarchy = new Mat();
-            Imgproc.Canny(mRgba, mIntermediateMat, 125, 250);
-            Imgproc.findContours(mIntermediateMat, contours, hierarchy, Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_NONE, new Point(0, 0));
-            hierarchy.release();
-            Imgproc.drawContours(mRgbaF, contours, -1, new Scalar(255, 0, 0, 255), 3);
-
-            drawRectangle(contours);
-            */
         }
 
         return mRgbaF;

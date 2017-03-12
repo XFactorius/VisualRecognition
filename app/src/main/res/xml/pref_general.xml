@@ -1,0 +1,13 @@
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <SwitchPreference
+        android:defaultValue="true"
+        android:key="example_switch"
+        android:title="@string/enableVoice" />
+    <EditTextPreference
+        android:defaultValue="100"
+        android:inputType="number"
+        android:key="threshold1"
+        android:title="@string/threshold1" />
+
+</PreferenceScreen>

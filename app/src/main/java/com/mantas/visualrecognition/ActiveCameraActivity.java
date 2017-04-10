@@ -11,8 +11,11 @@ import android.view.MotionEvent;
 import android.view.SurfaceView;
 import android.view.WindowManager;
 
+import com.mantas.visualrecognition.Dialogs.SettingsDialog;
 import com.mantas.visualrecognition.Enums.Actions;
+import com.mantas.visualrecognition.Enums.ScanningMethod;
 import com.mantas.visualrecognition.Services.VoiceRecognition;
+import com.mantas.visualrecognition.Settings.MainSettings;
 
 import org.opencv.android.BaseLoaderCallback;
 import org.opencv.android.CameraBridgeViewBase;
@@ -46,7 +49,6 @@ public class ActiveCameraActivity extends Activity implements CameraBridgeViewBa
     Mat mRgbaT;
     Mat mIntermediateMat;
     private CameraBridgeViewBase mOpenCvCameraView;
-    boolean scanning = false;
     boolean resourcesLoaded = false;
 
     private CascadeClassifier cascadeClassifier = null;
@@ -128,54 +130,59 @@ public class ActiveCameraActivity extends Activity implements CameraBridgeViewBa
             mRgba = inputFrame.gray();
             mRgbaF = inputFrame.rgba();
 
-        if (scanning) {
+        if (MainSettings.scanning) {
 
-            if (!resourcesLoaded) {
+            if (MainSettings.method == ScanningMethod.HAAR) {
 
-                InputStream is = getResources().openRawResource(R.raw.haarcascade_frontalface_default);
-                InputStream is2 = getResources().openRawResource(R.raw.frontal_eyes);
+                if (!resourcesLoaded) {
 
-                File cascadeDir = getDir("cascade", Context.MODE_PRIVATE);
+                    InputStream is = getResources().openRawResource(R.raw.haarcascade_frontalface_default);
+                    InputStream is2 = getResources().openRawResource(R.raw.frontal_eyes);
 
-                File mCascadeFile = new File(cascadeDir, "haarcascade_frontalface_default.xml");
-                File eyesCascadeFile = new File(cascadeDir, "frontal_eyes.xml");
+                    File cascadeDir = getDir("cascade", Context.MODE_PRIVATE);
 
-                loadResources(is, mCascadeFile);
-                loadResources(is2, eyesCascadeFile);
+                    File mCascadeFile = new File(cascadeDir, "haarcascade_frontalface_default.xml");
+                    File eyesCascadeFile = new File(cascadeDir, "frontal_eyes.xml");
 
-                cascadeClassifier = new CascadeClassifier(mCascadeFile.getAbsolutePath());
+                    loadResources(is, mCascadeFile);
+                    loadResources(is2, eyesCascadeFile);
 
-                cascadeClassifier.load(mCascadeFile.getAbsolutePath());
+                    cascadeClassifier = new CascadeClassifier(mCascadeFile.getAbsolutePath());
 
-                eyesClassifier = new CascadeClassifier(eyesCascadeFile.getAbsolutePath());
+                    cascadeClassifier.load(mCascadeFile.getAbsolutePath());
 
-                eyesClassifier.load(eyesCascadeFile.getAbsolutePath());
+                    eyesClassifier = new CascadeClassifier(eyesCascadeFile.getAbsolutePath());
 
-                resourcesLoaded = true;
-            }
+                    eyesClassifier.load(eyesCascadeFile.getAbsolutePath());
 
-            if (!cascadeClassifier.empty() && !eyesClassifier.empty()) {
-
-                MatOfRect objects = new MatOfRect();
-
-                MatOfRect eyesObjects = new MatOfRect();
-
-                cascadeClassifier.detectMultiScale(mRgba, objects, 1.04, 4, 0, new Size(400, 400), new Size(1000, 1000));
-
-                Rect[] dataArray = objects.toArray();
-
-                for (Rect rect : dataArray) {
-                    Imgproc.rectangle(mRgbaF, rect.tl(), rect.br(), new Scalar(0, 255, 0, 255), 3);
-
-                    eyesClassifier.detectMultiScale(mRgba, eyesObjects, 1.04, 4, 0, new Size(100, 100), new Size(1000, 1000));
-                    Rect[] eyesDataArray = eyesObjects.toArray();
-
-                    for (Rect eye : eyesDataArray) {
-                        Imgproc.rectangle(mRgbaF, eye.tl(), eye.br(), new Scalar(255, 0, 0, 255), 3);
-                        vibrate();
-                    }
-
+                    resourcesLoaded = true;
                 }
+
+                if (!cascadeClassifier.empty() && !eyesClassifier.empty()) {
+
+                    MatOfRect objects = new MatOfRect();
+
+                    MatOfRect eyesObjects = new MatOfRect();
+
+                    cascadeClassifier.detectMultiScale(mRgba, objects, 1.04, 4, 0, new Size(400, 400), new Size(1000, 1000));
+
+                    Rect[] dataArray = objects.toArray();
+
+                    for (Rect rect : dataArray) {
+                        Imgproc.rectangle(mRgbaF, rect.tl(), rect.br(), new Scalar(0, 255, 0, 255), 3);
+
+                        eyesClassifier.detectMultiScale(mRgba, eyesObjects, 1.04, 4, 0, new Size(100, 100), new Size(1000, 1000));
+                        Rect[] eyesDataArray = eyesObjects.toArray();
+
+                        for (Rect eye : eyesDataArray) {
+                            Imgproc.rectangle(mRgbaF, eye.tl(), eye.br(), new Scalar(255, 0, 0, 255), 3);
+                            vibrate();
+                        }
+
+                    }
+                }
+            } else {
+
             }
         }
 
@@ -205,11 +212,15 @@ public class ActiveCameraActivity extends Activity implements CameraBridgeViewBa
     @Override
     public boolean onTouchEvent(MotionEvent event) {
 
-        final int action = event.getAction();
+       /* final int action = event.getAction();
 
         if (action == MotionEvent.ACTION_UP) {
             enableVoiceRecognition();
-        }
+        } */
+
+        SettingsDialog dialog = new SettingsDialog();
+        dialog.show(getFragmentManager(), "Test");
+
         return super.onTouchEvent(event);
     }
 
@@ -248,11 +259,11 @@ public class ActiveCameraActivity extends Activity implements CameraBridgeViewBa
     }
 
     void turnScanningOff() {
-        scanning = false;
+        MainSettings.scanning = false;
     }
 
     void turnScanningOn() {
-        scanning = true;
+        MainSettings.scanning = true;
     }
 
     private void back() {
